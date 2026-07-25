@@ -1,0 +1,406 @@
+@page "/share-book"
+@using CSE325_Group_Project.Models
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Share your book</PageTitle>
+
+<div class="container mt-4 mb-5 pb-5 px-0">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            <div class="text-center mb-4">
+                <h2 class="display-6 fw-bold" style="background: -webkit-linear-gradient(45deg, #0d6efd, #0dcaf0); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Share Your Book</h2>
+                <p class="text-muted">Fill out the details below to add a new book to the library.</p>
+            </div>
+
+            @if (!isSubmitted)
+            {
+                <div class="card shadow-sm p-4">
+                    <form @onsubmit="HandleSubmit">
+                        <div class="mb-3">
+                            <label class="form-label">Book Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" @bind="book.Title" @bind:event="oninput" required />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Author <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" @bind="book.Author" @bind:event="oninput" required />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control" @bind="book.Description" @bind:event="oninput" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Link to Full Book <span class="text-danger">*</span></label>
+                            <input type="url" class="form-control" @bind="book.Url" @bind:event="oninput" required />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Date Released <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" @bind="book.DateReleased" @bind:event="oninput" required />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Book Cover Image <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-3 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="imageUploadType" id="urlType" checked="@(!isUpload)" @onchange="@(() => isUpload = false)">
+                                    <label class="form-check-label" for="urlType">Image URL</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="imageUploadType" id="uploadType" checked="@(isUpload)" @onchange="@(() => isUpload = true)">
+                                    <label class="form-check-label" for="uploadType">Upload File</label>
+                                </div>
+                            </div>
+                            
+                            @if (!isUpload)
+                            {
+                                <input type="url" class="form-control" @bind="book.ImageUrl" @bind:event="oninput" placeholder="Enter image URL..." />
+                            }
+                            else
+                            {
+                                <InputFile class="form-control" OnChange="HandleImageUpload" accept="image/*" />
+                            }
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(book.ImageUrl))
+                        {
+                            <div class="mb-4 text-center">
+                                <h5>Image Preview</h5>
+                                <img src="@book.ImageUrl" alt="Book Cover Preview" class="img-thumbnail" style="max-height: 250px; object-fit: contain;" />
+                            </div>
+                        }
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" disabled="@(!IsFormValid || isSubmitting)">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span class="ms-2">Sharing...</span>
+                                }
+                                else
+                                {
+                                    <span>Share Book</span>
+                                }
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+    
+    <!-- Admin and Reset buttons at the bottom -->
+    <div class="text-center mt-5 d-flex justify-content-center gap-3">
+        <button type="button" class="btn btn-link text-muted text-decoration-none shadow-none" style="font-size: 0.7rem;" @onclick="OpenAdminPanel">admin reviews</button>
+        <button type="button" class="btn btn-link text-danger text-decoration-none shadow-none" style="font-size: 0.7rem;" @onclick="ClearStorage">reset data (fix errors)</button>
+    </div>
+</div>
+
+@if (isSubmitted && !isApproved && !showAdminPanel)
+{
+    <div class="overlay">
+        <div class="overlay-content text-center text-white p-3 p-md-5">
+            <h1 class="display-4 fw-bold">Awaiting Admin Review</h1>
+            <p class="lead mt-3">Thank you for sharing your book. It will be available once reviewed.</p>
+            <div class="mt-5 d-flex flex-column align-items-center gap-3">
+                <button class="btn btn-outline-light px-5 py-2 rounded-pill fw-bold" @onclick="AcknowledgeBook">Acknowledged</button>
+                
+                <!-- Secret button to simulate admin approval -->
+                <button type="button" class="btn btn-link text-white-50 text-decoration-none shadow-none mt-4" style="font-size: 0.6rem;" @onclick="ApproveBook">admin reviewed</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showAdminPanel)
+{
+    <div class="overlay" style="background-color: rgba(0, 0, 0, 0.95); align-items: flex-start; overflow-y: auto; padding-top: 2rem; padding-bottom: 2rem;">
+        <div class="container bg-white text-dark rounded shadow-lg p-3 p-md-4 position-relative" style="max-width: 800px;">
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" aria-label="Close" @onclick="CloseAdminPanel"></button>
+            <h3 class="mb-4 fw-bold border-bottom pb-2">Admin Reviews</h3>
+            
+            @if (allBooks == null || !allBooks.Any())
+            {
+                <p class="text-muted">No books found in the library.</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var b in allBooks)
+                    {
+                        <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 p-3">
+                            <div class="d-flex align-items-center gap-3">
+                                @if (!string.IsNullOrEmpty(b.ImageUrl))
+                                {
+                                    <img src="@b.ImageUrl" alt="Cover" style="width: 50px; height: 50px; object-fit: cover;" class="rounded" />
+                                }
+                                <div>
+                                    <h6 class="mb-0 fw-bold">@b.Title</h6>
+                                    <small class="text-muted">by @b.Author</small>
+                                    <div>
+                                        @if (b.IsApproved)
+                                        {
+                                            <span class="badge bg-success">Approved</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">Awaiting Review</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center">
+                                @if (!b.IsApproved)
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => AdminApproveSpecificBook(b)">Approve</button>
+                                    <button class="btn btn-sm btn-danger" @onclick="() => InitiateDelete(b)">Reject</button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => InitiateDelete(b)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                            <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Zm6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528ZM8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
+                                        </svg>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        
+        @if (showDeleteConfirm && bookToDelete != null)
+        {
+            <div class="overlay" style="background-color: rgba(0, 0, 0, 0.7); z-index: 10000;">
+                <div class="card shadow-lg p-4 text-dark" style="max-width: 400px; width: 90%;">
+                    <h4 class="fw-bold text-danger mb-3">Confirm Deletion</h4>
+                    <p>Are you sure you want to delete <strong>@bookToDelete.Title</strong>?</p>
+                    <div class="alert alert-warning p-2 text-center">
+                        Type <strong>@expectedDeleteCode</strong> to confirm.
+                    </div>
+                    <input type="text" class="form-control mb-3 text-center fs-5 fw-bold" @bind="inputDeleteCode" @bind:event="oninput" placeholder="Enter code here" />
+                    <div class="d-flex justify-content-end gap-2">
+                        <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                        <button class="btn btn-danger" @onclick="ConfirmDelete" disabled="@(inputDeleteCode != expectedDeleteCode)">Delete</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(5px);
+    }
+</style>
+
+@code {
+    private Book book = new Book { Id = Guid.NewGuid(), DateReleased = DateTime.Today };
+    private bool isUpload = false;
+    private bool isSubmitted = false;
+    private bool isApproved = false;
+    private bool isSubmitting = false;
+    
+    // Admin Review panel
+    private bool showAdminPanel = false;
+    private List<Book> allBooks = new List<Book>();
+
+    // Delete Confirmation
+    private Book? bookToDelete;
+    private string expectedDeleteCode = "";
+    private string inputDeleteCode = "";
+    private bool showDeleteConfirm = false;
+
+    private bool IsFormValid => 
+        !string.IsNullOrWhiteSpace(book.Title) &&
+        !string.IsNullOrWhiteSpace(book.Author) &&
+        !string.IsNullOrWhiteSpace(book.Description) &&
+        !string.IsNullOrWhiteSpace(book.Url) &&
+        book.DateReleased != default &&
+        !string.IsNullOrWhiteSpace(book.ImageUrl);
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            var format = file.ContentType;
+            // Limit to reasonable size, say 1MB for local storage safety
+            var maxAllowedSize = 1024 * 1024;
+            
+            try
+            {
+                var buffer = new byte[file.Size];
+                await file.OpenReadStream(maxAllowedSize).ReadAsync(buffer);
+                var base64 = Convert.ToBase64String(buffer);
+                book.ImageUrl = $"data:{format};base64,{base64}";
+            }
+            catch (Exception ex)
+            {
+                // Handle file too large or other errors
+                Console.WriteLine($"Error reading file: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        // Double check validation
+        if (!IsFormValid)
+        {
+            return;
+        }
+
+        isSubmitting = true;
+        // Simulate network delay to show the loading spinner gracefully
+        await Task.Delay(1500); 
+
+        isSubmitting = false;
+        isSubmitted = true;
+    }
+
+    private async Task AcknowledgeBook()
+    {
+        book.IsApproved = false;
+        await SaveBookToStorage();
+        NavigationManager.NavigateTo("/available-books");
+    }
+
+    private async Task ApproveBook()
+    {
+        book.IsApproved = true;
+        isApproved = true;
+        await SaveBookToStorage();
+        NavigationManager.NavigateTo("/available-books");
+    }
+
+    private async Task SaveBookToStorage()
+    {
+        // Save to LocalStorage
+        try
+        {
+            var booksJson = await JSRuntime.InvokeAsync<string>("window.localStorageInterop.getItem", "shared_books");
+            List<Book> books = new List<Book>();
+            
+            if (!string.IsNullOrEmpty(booksJson))
+            {
+                books = System.Text.Json.JsonSerializer.Deserialize<List<Book>>(booksJson) ?? new List<Book>();
+            }
+
+            books.Add(book);
+            var updatedJson = System.Text.Json.JsonSerializer.Serialize(books);
+            
+            await JSRuntime.InvokeVoidAsync("window.localStorageInterop.setItem", "shared_books", updatedJson);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving book: {ex.Message}");
+        }
+    }
+
+    private async Task OpenAdminPanel()
+    {
+        await LoadAllBooks();
+        showAdminPanel = true;
+    }
+
+    private async Task ClearStorage()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.localStorageInterop.removeItem", "shared_books");
+            allBooks.Clear();
+            Console.WriteLine("Storage cleared successfully.");
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error clearing storage: {ex.Message}");
+        }
+    }
+
+    private void CloseAdminPanel()
+    {
+        showAdminPanel = false;
+    }
+
+    private async Task LoadAllBooks()
+    {
+        try
+        {
+            var booksJson = await JSRuntime.InvokeAsync<string>("window.localStorageInterop.getItem", "shared_books");
+            if (!string.IsNullOrEmpty(booksJson))
+            {
+                allBooks = System.Text.Json.JsonSerializer.Deserialize<List<Book>>(booksJson) ?? new List<Book>();
+                // Sort with awaiting review first
+                allBooks = allBooks.OrderBy(b => b.IsApproved).ThenByDescending(b => b.DateReleased).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading admin books: {ex.Message}");
+        }
+    }
+
+    private async Task AdminApproveSpecificBook(Book b)
+    {
+        b.IsApproved = true;
+        await SaveAllBooksToStorage();
+        await LoadAllBooks();
+    }
+
+    private void InitiateDelete(Book b)
+    {
+        bookToDelete = b;
+        expectedDeleteCode = new Random().Next(100000, 999999).ToString();
+        inputDeleteCode = "";
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        bookToDelete = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (inputDeleteCode == expectedDeleteCode && bookToDelete != null)
+        {
+            allBooks.RemoveAll(x => x.Id == bookToDelete.Id);
+            await SaveAllBooksToStorage();
+            await LoadAllBooks();
+            showDeleteConfirm = false;
+            bookToDelete = null;
+        }
+    }
+
+    private async Task SaveAllBooksToStorage()
+    {
+        try
+        {
+            var updatedJson = System.Text.Json.JsonSerializer.Serialize(allBooks);
+            await JSRuntime.InvokeVoidAsync("window.localStorageInterop.setItem", "shared_books", updatedJson);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating books storage: {ex.Message}");
+        }
+    }
+}
