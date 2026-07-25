@@ -1,0 +1,23 @@
+@page "/admin/dashboard"
+@rendermode InteractiveServer
+@using CSE325_Group_Project.Services
+@inject AuthService Auth
+
+<div class="container mt-4 text-center">
+    <h2>Admin Dashboard</h2>
+
+    @if (!Auth.IsLoggedIn)
+    {
+        <div class="alert alert-warning mt-3">Please sign in to access the admin panel.</div>
+        <a href="/admin/login" class="btn btn-primary">Go to Login</a>
+    }
+    else
+    {
+        <p class="text-muted">Welcome, @Auth.CurrentUser?.Name</p>
+
+        <div class="d-flex justify-content-center gap-3 mt-4">
+            <a href="/admin/review" class="btn text-white bg-success p-3 fs-5">Review & Approve Books</a>
+            <a href="/admin/create" class="btn text-white bg-primary p-3 fs-5">+ Create Admin</a>
+        </div>
+    }
+</div>

@@ -1,0 +1,44 @@
+@page "/admin/login"
+@rendermode InteractiveServer
+@using CSE325_Group_Project.Services
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="container col-md-4 mt-5 p-4 border rounded shadow-sm text-center bg-white">
+    <h3>Admin Sign In</h3>
+    
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="mb-3">
+        <input class="form-control" placeholder="Email" @bind="email" />
+    </div>
+    <div class="mb-3">
+        <input type="password" class="form-control" placeholder="Password" @bind="password" />
+    </div>
+    <button class="btn btn-primary w-100" @onclick="HandleLogin">Sign In</button>
+    <div>
+        <a href="javascript:void(0)" class="text-muted small text-decoration-none">Forgot Password?</a>
+    </div>
+    </div>
+
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string errorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        if (await Auth.LoginAsync(email, password))
+        {
+            Nav.NavigateTo("/admin/dashboard");
+        }
+        else
+        {
+            errorMessage = "Invalid email or password";
+        }
+    }
+}

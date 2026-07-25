@@ -1,0 +1,76 @@
+@page "/admin/review"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using CSE325_Group_Project.Data
+@using CSE325_Group_Project.Models
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<div class="container col-md-8 mt-4">
+    <h3 class="text-center">Review & Approve Books</h3>
+
+    @if (unapprovedBooks == null)
+    {
+        <p class="text-center">Loading books...</p>
+    }
+    else if (!unapprovedBooks.Any())
+    {
+        <div class="alert alert-info text-center mt-3">No pending books for approval.</div>
+    }
+    else
+    {
+        <ul class="list-group mt-3">
+            @foreach (var book in unapprovedBooks)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>@book.Title</strong> <span class="text-muted">by @book.Author</span>
+                        <p class="mb-0 small text-secondary">@book.Description</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-success me-2" @onclick="() => Approve(book.Id)">✔️ Approve</button>
+                        <button class="btn btn-danger" @onclick="() => Reject(book.Id)">❌ Reject</button>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private List<Book>? unapprovedBooks;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBooks();
+    }
+
+    private async Task LoadBooks()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        unapprovedBooks = await db.Books.Where(b => !b.IsApproved).ToListAsync();
+    }
+
+    private async Task Approve(Guid id)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        var book = await db.Books.FindAsync(id);
+        if (book != null)
+        {
+            book.IsApproved = true;
+            await db.SaveChangesAsync();
+            await LoadBooks();
+        }
+    }
+
+    private async Task Reject(Guid id)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        var book = await db.Books.FindAsync(id);
+        if (book != null)
+        {
+            db.Books.Remove(book);
+            await db.SaveChangesAsync();
+            await LoadBooks();
+        }
+    }
+}

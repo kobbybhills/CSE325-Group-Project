@@ -1,0 +1,76 @@
+@page "/admin/create"
+@rendermode InteractiveServer
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<div class="container col-md-5 mt-5 p-4 border rounded shadow-sm bg-white">
+    <h3 class="text-center mb-4">Create Admin Account</h3>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    <div class="mb-3">
+        <label class="form-label">Email address</label>
+        <input class="form-control" placeholder="Enter admin email" @bind="email" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" placeholder="Enter password" @bind="password" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Confirm Password</label>
+        <input type="password" class="form-control" placeholder="Confirm password" @bind="confirmPassword" />
+    </div>
+
+    <button class="btn btn-success w-100" @onclick="HandleCreateAdmin">Create Admin</button>
+    <div class="text-center mt-3">
+        <a href="admin/dashboard" class="text-decoration-none">Back to Dashboard</a>
+    </div>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string confirmPassword = "";
+    private string errorMessage = "";
+    private string successMessage = "";
+
+    private async Task HandleCreateAdmin()
+    {
+        errorMessage = "";
+        successMessage = "";
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please fill in all fields.";
+            return;
+        }
+
+        if (password != confirmPassword)
+        {
+            errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        bool success = await Auth.RegisterAdminAsync(email, password);
+        if (success)
+        {
+            successMessage = "Admin created successfully!";
+            email = "";
+            password = "";
+            confirmPassword = "";
+        }
+        else
+        {
+            errorMessage = "Failed to create admin. Email might already exist.";
+        }
+    }
+}
