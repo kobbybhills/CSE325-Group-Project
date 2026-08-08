@@ -38,9 +38,9 @@ else
     app.UseHttpsRedirection();
 }
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+// Standard .NET 9 status code re-execute syntax
+app.UseStatusCodePagesWithReExecute("/not-found");
 
-// Use standard static files middleware compatible with .NET 8
 app.UseStaticFiles();
 
 app.UseAntiforgery();
